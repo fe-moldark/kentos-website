@@ -1,0 +1,84 @@
+Network Tap Configuration:
+
+
+sudo apt-get update &&
+sudo apt-get upgrade &&
+sudo apt install bridge-utils &&
+sudo apt install tcpdump
+
+
+sudo nano /etc/network/interfaces
+#begin
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet manual
+
+auto eth1
+iface eth1 inet manual
+
+auto br0
+iface br0 inet manual
+    bridge_ports eth0 eth1
+
+
+auto wlan0
+iface wlan0 inet static
+    wpa-ssid "Maybe config this for an adhoc network later..."
+    wpa-psk "stillNotAnIdiot"
+    address 192.168.11.33
+    netmask 255.255.255.0
+    gateway 192.168.11.1
+    dns-nameservers 8.8.8.8 8.8.4.4
+#eof
+
+
+Identify USB stick using sudo fdisk -l:
+For me > /dev/sda1
+sudo mkdir /mnt/usb_dev1 (this will be the mount point eventually)
+sudo chown -R pi:pi /mnt/usb_dev1/
+
+
+nano /home/pi/startup.sh
+#begin
+#!/bin/bash
+
+echo "Script started at $(date)" >> /home/pi/youHadBetterHaveAGoodReasonForAnError.log
+# Set the base directory for the USB stick and the base filename
+
+sudo mount -t vfat -o uid=1000,gid=1000,dmask=0000,fmask=0000 /dev/sda1 /mnt/usb_dev1
+sleep 2
+sudo chown -R pi:pi /mnt/usb_dev1/
+
+MOUNT_DIR="/mnt/usb_dev1"
+BASE_FILENAME="capture"
+EXTENSION=".pcap"
+
+# Find the next available filename
+FILENAME="${MOUNT_DIR}/${BASE_FILENAME}"
+COUNTER=1
+while [ -e "${FILENAME}_${COUNTER}${EXTENSION}" ]; do
+    ((COUNTER++))
+done
+
+FINAL_FILENAME="${FILENAME}_${COUNTER}${EXTENSION}"
+
+echo "Filename: ${FINAL_FILENAME}" >> /home/pi/youHadBetterHaveAGoodReasonForAnError.log
+
+# Run tcpdump with the filter
+sudo tcpdump -i br0 'not icmp and not arp and not ether broadcast and not ether multicast' -C 200 -w "${FINAL_FILENAME}"
+
+echo "Script ended at $(date)" >> /home/pi/youHadBetterHaveAGoodReasonForAnError.log
+#eof
+
+
+chmod +x /home/pi/startup.sh
+
+
+Add to crontab:
+sudo crontab -e
+@reboot sleep 60 && sudo /home/pi/startup.sh >> /home/pi/youHadBetterHaveAGoodReasonForAnError.log 2>&1
+
+
+Reboot and confirm it works...
