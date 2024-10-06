@@ -1,4 +1,5 @@
 Network Tap Configuration:
+#adding a new line to test new firewall rules on router and email notifications from file server
 
 
 sudo apt-get update &&
